@@ -1,0 +1,25 @@
+{
+  "name": "personal-trainer-client-manager",
+  "version": "1.0.0",
+  "description": "A personal trainer client management application.",
+  "main": "backend/src/index.ts",
+  "scripts": {
+    "start": "node backend/src/index.js",
+    "build": "tsc -p backend/tsconfig.json",
+    "dev": "ts-node backend/src/index.ts",
+    "seed": "ts-node scripts/seed.ts"
+  },
+  "dependencies": {
+    "express": "^4.17.1",
+    "mongoose": "^5.10.9",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "typescript": "^4.1.2",
+    "ts-node": "^9.1.1",
+    "@types/express": "^4.17.8",
+    "@types/node": "^14.14.31"
+  },
+  "author": "Your Name",
+  "license": "MIT"
+}
