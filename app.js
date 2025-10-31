@@ -8,7 +8,8 @@ let currentPage = 'dashboard';
 let charts = {
     weight: null,
     bodyFat: null,
-    muscleMass: null
+    muscleMass: null,
+    bmr: null
 };
 
 // Google API関連
@@ -1145,8 +1146,8 @@ function renderProgressCharts(client) {
         const datasets = [{
             label: '体重 (kg)',
             data: weights,
-            borderColor: '#4a90e2',
-            backgroundColor: 'rgba(74, 144, 226, 0.1)',
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
             tension: 0.4,
             fill: true
         }];
@@ -1201,8 +1202,8 @@ function renderProgressCharts(client) {
         const datasets = [{
             label: '体脂肪率 (%)',
             data: bodyFats,
-            borderColor: '#f39c12',
-            backgroundColor: 'rgba(243, 156, 18, 0.1)',
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
             tension: 0.4,
             fill: true
         }];
@@ -1274,6 +1275,50 @@ function renderProgressCharts(client) {
                     title: {
                         display: true,
                         text: '筋肉量の推移',
+                        font: { size: 16, weight: 'bold' }
+                    },
+                    legend: {
+                        display: true
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false
+                    }
+                }
+            }
+        });
+    }
+
+    // 基礎代謝量グラフ
+    const bmrCtx = document.getElementById('bmrChart');
+    const bmrs = sessionsToShow.map(s => s.bmr).filter(v => v !== null && v !== undefined);
+
+    if (bmrCtx && bmrs.length > 0) {
+        if (charts.bmr) charts.bmr.destroy();
+
+        const bmrLabels = sessionsToShow.filter(s => s.bmr !== null && s.bmr !== undefined).map(s => formatDate(new Date(s.date)));
+
+        charts.bmr = new Chart(bmrCtx, {
+            type: 'line',
+            data: {
+                labels: bmrLabels,
+                datasets: [{
+                    label: '基礎代謝量 (kcal)',
+                    data: bmrs,
+                    borderColor: '#10b981',
+                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '基礎代謝量の推移',
                         font: { size: 16, weight: 'bold' }
                     },
                     legend: {
