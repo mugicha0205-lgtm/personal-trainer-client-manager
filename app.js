@@ -267,7 +267,7 @@ function navigateToPage(pageName) {
             renderClientsGrid();
             break;
         case 'calendar':
-            renderCalendar();
+            renderCalendarPage();
             break;
         case 'settings':
             // 設定ページは静的なのでレンダリング不要
@@ -280,6 +280,102 @@ function navigateToPage(pageName) {
 // ========================================
 // ダッシュボード
 // ========================================
+
+function renderDashboard() {
+    renderAlerts();
+    renderUpcomingAppointments();
+}
+
+// カレンダーページを描画
+function renderCalendarPage() {
+    renderAllAppointments();
+}
+
+// すべての予約を近い順に表示
+function renderAllAppointments() {
+    const container = document.getElementById('calendarView');
+    container.innerHTML = '';
+
+    const now = new Date();
+    const appointments = [];
+
+    // すべての顧客の予約を収集
+    clients.forEach(client => {
+        if (client.nextAppointment) {
+            const appointmentDate = new Date(client.nextAppointment);
+            appointments.push({
+                client: client,
+                date: appointmentDate
+            });
+        }
+    });
+
+    // 日時が近い順にソート
+    appointments.sort((a, b) => a.date - b.date);
+
+    if (appointments.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>予約はありません</p>
+                <small>顧客詳細ページから予約を追加できます</small>
+            </div>
+        `;
+        return;
+    }
+
+    // 予約リストを表示
+    const appointmentsList = document.createElement('div');
+    appointmentsList.className = 'appointments-list';
+
+    appointments.forEach(appt => {
+        const apptDiv = document.createElement('div');
+        apptDiv.className = 'appointment-card';
+
+        const isPast = appt.date < now;
+        const isToday = appt.date.toDateString() === now.toDateString();
+        const isTomorrow = appt.date.toDateString() === new Date(now.getTime() + 24 * 60 * 60 * 1000).toDateString();
+
+        let dateLabel = formatDateTime(appt.date);
+        if (isToday) {
+            dateLabel = '<span class="date-label today">今日</span> ' + formatTime(appt.date);
+        } else if (isTomorrow) {
+            dateLabel = '<span class="date-label tomorrow">明日</span> ' + formatTime(appt.date);
+        }
+
+        const statusClass = isPast ? 'past' : (isToday ? 'today' : 'upcoming');
+
+        // チケット残数の取得
+        const ticketsRemaining = appt.client.tickets ? appt.client.tickets.remaining : 0;
+        let ticketBadge = '';
+        if (ticketsRemaining === 0) {
+            ticketBadge = '<span class="ticket-warning">チケット残0</span>';
+        } else if (ticketsRemaining <= 2) {
+            ticketBadge = `<span class="ticket-low">残り${ticketsRemaining}回</span>`;
+        }
+
+        apptDiv.innerHTML = `
+            <div class="appointment-status ${statusClass}"></div>
+            <div class="appointment-info">
+                <div class="appointment-header">
+                    <h3>${appt.client.name}</h3>
+                    ${ticketBadge}
+                </div>
+                <p class="appointment-time">${dateLabel}</p>
+                <div class="appointment-details">
+                    <span>📞 ${appt.client.phone}</span>
+                    ${appt.client.medicalNotes ? '<span class="medical-note">⚠️ 特記事項あり</span>' : ''}
+                </div>
+            </div>
+            <div class="appointment-actions">
+                <button class="btn btn-primary btn-small" onclick="openClientDetail('${appt.client.id}')">詳細</button>
+            </div>
+        `;
+
+        appointmentsList.appendChild(apptDiv);
+    });
+
+    container.appendChild(appointmentsList);
+}
 
 function renderDashboard() {
     renderAlerts();
@@ -621,11 +717,29 @@ function openClientDetail(clientId) {
     // チケット情報を描画
     renderTicketsInfo(client);
 
+    // セッション記録ボタンの状態を更新
+    updateSessionButtonState(client);
+
     // 基本情報タブに切り替え
     switchModalTab('info');
 
     // モーダルを表示
     document.getElementById('clientModal').classList.add('active');
+}
+
+// セッション記録ボタンの状態を更新
+function updateSessionButtonState(client) {
+    const sessionBtn = document.getElementById('addSessionBtn');
+
+    if (!client.tickets || client.tickets.remaining === 0) {
+        sessionBtn.disabled = true;
+        sessionBtn.classList.add('btn-disabled');
+        sessionBtn.title = 'チケット残数が0です。チケットを購入してください。';
+    } else {
+        sessionBtn.disabled = false;
+        sessionBtn.classList.remove('btn-disabled');
+        sessionBtn.title = 'セッション記録';
+    }
 }
 
 function closeClientModal() {
@@ -761,6 +875,14 @@ function openSessionModal() {
 
     const client = clients.find(c => c.id === currentClientId);
     if (!client) return;
+
+    // チケット残数チェック
+    if (!client.tickets || client.tickets.remaining === 0) {
+        showNotification('チケット残数が0です。チケットを購入してください。', 'error');
+        // チケット購入モーダルを開く
+        openTicketModal();
+        return;
+    }
 
     // フォームリセット
     document.getElementById('sessionForm').reset();
@@ -1223,6 +1345,7 @@ function handleTicketFormSubmit(e) {
 
     // UI更新
     renderTicketsInfo(client);
+    updateSessionButtonState(client); // セッション記録ボタンの状態を更新
     updateStats();
     renderDashboard();
     renderClientsGrid();
@@ -1262,18 +1385,44 @@ function renderTicketsInfo(client) {
         historyItem.className = 'ticket-history-item';
 
         const statusClass = purchase.paymentStatus === '支払済み' ? 'paid' : 'unpaid';
+        const statusButtonText = purchase.paymentStatus === '支払済み' ? '未払いに変更' : '支払済みに変更';
 
         historyItem.innerHTML = `
-            <div>
-                <strong>${purchase.count}回チケット</strong>
-                <p>${formatDate(new Date(purchase.date))} - ¥${purchase.price.toLocaleString()}</p>
-                <small>${purchase.paymentMethod}</small>
+            <div class="ticket-history-info">
+                <div>
+                    <strong>${purchase.count}回チケット</strong>
+                    <p>${formatDate(new Date(purchase.date))} - ¥${purchase.price.toLocaleString()}</p>
+                    <small>${purchase.paymentMethod}</small>
+                </div>
+                <div class="ticket-history-actions">
+                    <span class="payment-status ${statusClass}">${purchase.paymentStatus}</span>
+                    <button class="btn-small" onclick="togglePaymentStatus('${client.id}', '${purchase.id}')">${statusButtonText}</button>
+                </div>
             </div>
-            <span class="payment-status ${statusClass}">${purchase.paymentStatus}</span>
         `;
 
         historyDiv.appendChild(historyItem);
     });
+}
+
+// 支払いステータスを切り替える
+function togglePaymentStatus(clientId, purchaseId) {
+    const client = clients.find(c => c.id === clientId);
+    if (!client || !client.ticketHistory) return;
+
+    const purchase = client.ticketHistory.find(p => p.id === purchaseId);
+    if (!purchase) return;
+
+    // ステータスを切り替え
+    purchase.paymentStatus = purchase.paymentStatus === '支払済み' ? '未払い' : '支払済み';
+
+    // 保存
+    saveToLocalStorage();
+
+    // UI更新
+    renderTicketsInfo(client);
+
+    showNotification(`支払いステータスを「${purchase.paymentStatus}」に変更しました`);
 }
 
 // ========================================
@@ -1866,6 +2015,13 @@ function formatDateTime(date) {
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
     return `${dateStr} ${hours}:${minutes}`;
+}
+
+function formatTime(date) {
+    if (!date) return '-';
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${hours}:${minutes}`;
 }
 
 function closeAllModals() {
