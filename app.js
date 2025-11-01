@@ -574,6 +574,48 @@ function renderClientsGrid() {
     });
 }
 
+// 目標達成率を計算
+function calculateGoalProgress(client) {
+    if (!client.sessions || client.sessions.length === 0) return null;
+
+    const latestSession = client.sessions[0];
+    let weightProgress = null;
+    let bodyFatProgress = null;
+
+    // 体重目標の達成率
+    if (client.goalWeight && client.initialWeight) {
+        const totalChange = client.initialWeight - client.goalWeight;
+        const currentChange = client.initialWeight - latestSession.weight;
+        weightProgress = {
+            percentage: Math.min(100, Math.round((currentChange / totalChange) * 100)),
+            remaining: Math.max(0, latestSession.weight - client.goalWeight),
+            type: 'weight'
+        };
+    }
+
+    // 体脂肪率目標の達成率
+    if (client.goalBodyFat && client.initialBodyFat && latestSession.bodyFat) {
+        const totalChange = client.initialBodyFat - client.goalBodyFat;
+        const currentChange = client.initialBodyFat - latestSession.bodyFat;
+        bodyFatProgress = {
+            percentage: Math.min(100, Math.round((currentChange / totalChange) * 100)),
+            remaining: Math.max(0, latestSession.bodyFat - client.goalBodyFat),
+            type: 'bodyFat'
+        };
+    }
+
+    return { weightProgress, bodyFatProgress };
+}
+
+// 達成率に応じた色クラスを取得
+function getProgressColorClass(percentage) {
+    if (percentage >= 100) return 'gold';
+    if (percentage >= 81) return 'light-green';
+    if (percentage >= 61) return 'yellow';
+    if (percentage >= 31) return 'orange';
+    return 'red';
+}
+
 function createClientCard(client) {
     const card = document.createElement('div');
     card.className = 'client-card';
@@ -619,6 +661,49 @@ function createClientCard(client) {
         nextApptHTML = `<p class="next-appointment"><strong>次回予約:</strong> ${formatDateTime(new Date(client.nextAppointment))}</p>`;
     }
 
+    // 目標達成率
+    let goalProgressHTML = '';
+    const progress = calculateGoalProgress(client);
+    if (progress && (progress.weightProgress || progress.bodyFatProgress)) {
+        const progressItems = [];
+
+        if (progress.weightProgress) {
+            const wp = progress.weightProgress;
+            const colorClass = getProgressColorClass(wp.percentage);
+            progressItems.push(`
+                <div class="goal-progress-item ${colorClass}">
+                    <div class="progress-header">
+                        <span class="progress-label">体重目標</span>
+                        <span class="progress-percentage">${wp.percentage}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${wp.percentage}%"></div>
+                    </div>
+                    <div class="progress-remaining">あと ${wp.remaining.toFixed(1)}kg</div>
+                </div>
+            `);
+        }
+
+        if (progress.bodyFatProgress) {
+            const bp = progress.bodyFatProgress;
+            const colorClass = getProgressColorClass(bp.percentage);
+            progressItems.push(`
+                <div class="goal-progress-item ${colorClass}">
+                    <div class="progress-header">
+                        <span class="progress-label">体脂肪率目標</span>
+                        <span class="progress-percentage">${bp.percentage}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${bp.percentage}%"></div>
+                    </div>
+                    <div class="progress-remaining">あと ${bp.remaining.toFixed(1)}%</div>
+                </div>
+            `);
+        }
+
+        goalProgressHTML = `<div class="goal-progress-container">${progressItems.join('')}</div>`;
+    }
+
     card.innerHTML = `
         <div class="client-card-body">
             <div class="client-card-header">
@@ -629,6 +714,7 @@ function createClientCard(client) {
                 <span class="client-status ${statusClass}">${client.status || 'アクティブ'}</span>
             </div>
             ${nextApptHTML}
+            ${goalProgressHTML}
             ${medicalWarningHTML}
         </div>
         ${ticketBadgeHTML}
