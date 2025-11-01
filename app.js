@@ -22,71 +22,90 @@ const GOOGLE_API_KEY = 'YOUR_GOOGLE_API_KEY'; // ユーザーが設定する必�
 const DISCOVERY_DOCS = ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest', 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
 const SCOPES = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.file';
 
-// トレーニング種目リスト
-const EXERCISE_LIST = [
-    'ベンチプレス',
-    'スクワット',
-    'デッドリフト',
-    'ラットプルダウン',
-    'ショルダープレス',
-    'バーベルロウ',
-    'レッグプレス',
-    'レッグカール',
-    'レッグエクステンション',
-    'チェストフライ',
-    'ケーブルクロスオーバー',
-    'ダンベルカール',
-    'トライセップスエクステンション',
-    'サイドレイズ',
-    'フロントレイズ',
-    'リアデルトフライ',
-    'シュラッグ',
-    'アブドミナルクランチ',
-    'プランク',
-    'レッグレイズ',
-    'ケーブルクランチ',
-    'バイセップスカール',
-    'ハンマーカール',
-    'プリーチャーカール',
-    'トライセップスプッシュダウン',
-    'ディップス',
-    'プルアップ',
-    'チンアップ',
-    'インクラインベンチプレス',
-    'デクラインベンチプレス',
-    'ダンベルプレス',
-    'ダンベルフライ',
-    'ペックデック',
-    'ケーブルフライ',
-    'ワンハンドダンベルロウ',
-    'Tバーロウ',
-    'シーテッドロウ',
-    'フェイスプル',
-    'アップライトロウ',
-    'ブルガリアンスクワット',
-    'ランジ',
-    'レッグアダクション',
-    'レッグアブダクション',
-    'カーフレイズ',
-    'シーテッドカーフレイズ',
-    'グッドモーニング',
-    'ヒップスラスト',
-    'バックエクステンション',
-    'サイドプランク',
-    'マウンテンクライマー',
-    'バーピー',
-    'ボックスジャンプ',
-    'バトルロープ',
-    'ケトルベルスイング',
-    'ダンベルスナッチ',
-    'バーベルクリーン',
-    'プッシュアップ',
-    'ワイドグリッププルアップ',
-    '腹筋ローラー',
-    'バイシクルクランチ',
-    'ロシアンツイスト',
-    'その他'
-];
+// トレーニング種目リスト（カテゴリー別）
+const EXERCISE_CATEGORIES = {
+    '胸': [
+        'ベンチプレス',
+        'インクラインベンチプレス',
+        'デクラインベンチプレス',
+        'ダンベルプレス',
+        'ダンベルフライ',
+        'チェストフライ',
+        'ケーブルクロスオーバー',
+        'ペックデック',
+        'ケーブルフライ',
+        'ディップス',
+        'プッシュアップ'
+    ],
+    '背中': [
+        'デッドリフト',
+        'ラットプルダウン',
+        'バーベルロウ',
+        'ワンハンドダンベルロウ',
+        'Tバーロウ',
+        'シーテッドロウ',
+        'プルアップ',
+        'チンアップ',
+        'ワイドグリッププルアップ',
+        'フェイスプル',
+        'バックエクステンション',
+        'シュラッグ'
+    ],
+    '肩': [
+        'ショルダープレス',
+        'サイドレイズ',
+        'フロントレイズ',
+        'リアデルトフライ',
+        'アップライトロウ'
+    ],
+    '腕': [
+        'ダンベルカール',
+        'バイセップスカール',
+        'ハンマーカール',
+        'プリーチャーカール',
+        'トライセップスエクステンション',
+        'トライセップスプッシュダウン',
+        'バーベルクリーン'
+    ],
+    '脚': [
+        'スクワット',
+        'レッグプレス',
+        'レッグカール',
+        'レッグエクステンション',
+        'ブルガリアンスクワット',
+        'ランジ',
+        'レッグアダクション',
+        'レッグアブダクション',
+        'カーフレイズ',
+        'シーテッドカーフレイズ',
+        'グッドモーニング',
+        'ヒップスラスト'
+    ],
+    '体幹': [
+        'プランク',
+        'サイドプランク',
+        'アブドミナルクランチ',
+        'レッグレイズ',
+        'ケーブルクランチ',
+        'バイシクルクランチ',
+        'ロシアンツイスト',
+        'マウンテンクライマー',
+        '腹筋ローラー'
+    ],
+    '有酸素・全身': [
+        'バーピー',
+        'ボックスジャンプ',
+        'バトルロープ',
+        'ケトルベルスイング',
+        'ダンベルスナッチ',
+        'ランニング',
+        'バイク',
+        'ローイング'
+    ]
+};
+
+// カスタム種目を保存する配列
+let customExercises = [];
 
 // ========================================
 // 初期化
@@ -917,26 +936,68 @@ function addExerciseEntry() {
 
     const entryId = 'exercise_' + Date.now();
 
+    // セット数のオプション（1〜10）
+    const setsOptions = Array.from({length: 10}, (_, i) => i + 1)
+        .map(num => `<option value="${num}">${num}</option>`).join('');
+
+    // レップ数のオプション（1〜30）
+    const repsOptions = Array.from({length: 30}, (_, i) => i + 1)
+        .map(num => `<option value="${num}">${num}</option>`).join('');
+
+    // 重量のオプション（1〜200kg、0.5kg刻み）
+    const weightOptions = ['<option value="">選択</option>'];
+    for (let i = 1; i <= 200; i += 0.5) {
+        weightOptions.push(`<option value="${i}">${i}kg</option>`);
+    }
+
+    // カテゴリー別の種目オプションを生成
+    let exerciseOptions = '<option value="">種目を選択</option>';
+    for (const [category, exercises] of Object.entries(EXERCISE_CATEGORIES)) {
+        exerciseOptions += `<optgroup label="${category}">`;
+        exercises.forEach(ex => {
+            exerciseOptions += `<option value="${ex}">${ex}</option>`;
+        });
+        exerciseOptions += '</optgroup>';
+    }
+
+    // カスタム種目があれば追加
+    if (customExercises.length > 0) {
+        exerciseOptions += '<optgroup label="カスタム種目">';
+        customExercises.forEach(ex => {
+            exerciseOptions += `<option value="${ex}">${ex}</option>`;
+        });
+        exerciseOptions += '</optgroup>';
+    }
+
     entryDiv.innerHTML = `
         <button type="button" class="exercise-remove" onclick="removeExerciseEntry('${entryId}')">削除</button>
         <div class="form-group">
             <label>種目</label>
-            <select class="exercise-select">
-                ${EXERCISE_LIST.map(ex => `<option value="${ex}">${ex}</option>`).join('')}
+            <select class="exercise-select" onchange="loadPreviousRecord(this, '${entryId}')">
+                ${exerciseOptions}
             </select>
+            <div class="previous-record" id="prevRecord_${entryId}" style="display: none;"></div>
         </div>
         <div class="form-row">
             <div class="form-group">
                 <label>セット数</label>
-                <input type="number" class="exercise-sets" min="0">
+                <select class="exercise-sets">
+                    <option value="">選択</option>
+                    ${setsOptions}
+                </select>
             </div>
             <div class="form-group">
-                <label>回数</label>
-                <input type="number" class="exercise-reps" min="0">
+                <label>レップ数（回数）</label>
+                <select class="exercise-reps">
+                    <option value="">選択</option>
+                    ${repsOptions}
+                </select>
             </div>
             <div class="form-group">
-                <label>重量 (kg)</label>
-                <input type="number" class="exercise-weight" step="0.5" min="0">
+                <label>重量</label>
+                <select class="exercise-weight">
+                    ${weightOptions.join('')}
+                </select>
             </div>
         </div>
     `;
@@ -950,6 +1011,66 @@ function removeExerciseEntry(entryId) {
     if (entry) {
         entry.remove();
     }
+}
+
+// 前回の記録を読み込む
+function loadPreviousRecord(selectElement, entryId) {
+    const exerciseName = selectElement.value;
+    if (!exerciseName || !currentClientId) return;
+
+    const client = clients.find(c => c.id === currentClientId);
+    if (!client || !client.sessions || client.sessions.length === 0) return;
+
+    // 最新のセッションから該当する種目を探す
+    let previousExercise = null;
+    for (let i = 0; i < client.sessions.length; i++) {
+        const session = client.sessions[i];
+        if (session.exercises) {
+            const found = session.exercises.find(ex => ex.name === exerciseName);
+            if (found) {
+                previousExercise = found;
+                break;
+            }
+        }
+    }
+
+    const prevRecordDiv = document.getElementById(`prevRecord_${entryId}`);
+    if (previousExercise) {
+        prevRecordDiv.style.display = 'block';
+        prevRecordDiv.innerHTML = `
+            <div class="prev-record-label">前回の記録:</div>
+            <div class="prev-record-data">
+                ${previousExercise.weight}kg × ${previousExercise.reps}回 × ${previousExercise.sets}セット
+            </div>
+        `;
+
+        // 前回の値をセレクトボックスに自動設定
+        const entry = document.getElementById(entryId);
+        entry.querySelector('.exercise-sets').value = previousExercise.sets;
+        entry.querySelector('.exercise-reps').value = previousExercise.reps;
+        entry.querySelector('.exercise-weight').value = previousExercise.weight;
+
+        // 前回のデータを保存（記録更新判定用）
+        entry.dataset.previousWeight = previousExercise.weight;
+        entry.dataset.previousReps = previousExercise.reps;
+    } else {
+        prevRecordDiv.style.display = 'none';
+    }
+}
+
+// 記録更新をチェック
+function checkRecordImprovement(entryId) {
+    const entry = document.getElementById(entryId);
+    if (!entry.dataset.previousWeight) return false;
+
+    const currentWeight = parseFloat(entry.querySelector('.exercise-weight').value) || 0;
+    const currentReps = parseInt(entry.querySelector('.exercise-reps').value) || 0;
+    const previousWeight = parseFloat(entry.dataset.previousWeight);
+    const previousReps = parseInt(entry.dataset.previousReps);
+
+    // 重量が増えた、または同じ重量でレップ数が増えた場合を記録更新とする
+    return currentWeight > previousWeight ||
+           (currentWeight === previousWeight && currentReps > previousReps);
 }
 
 // 基礎代謝を計算（LBM使用）
@@ -973,8 +1094,9 @@ function handleSessionFormSubmit(e) {
     const client = clients.find(c => c.id === currentClientId);
     if (!client) return;
 
-    // エクササイズデータを収集
+    // エクササイズデータを収集 + 記録更新チェック
     const exercises = [];
+    const improvements = [];
     document.querySelectorAll('.exercise-entry').forEach(entry => {
         const exercise = {
             name: entry.querySelector('.exercise-select').value,
@@ -983,6 +1105,11 @@ function handleSessionFormSubmit(e) {
             weight: parseFloat(entry.querySelector('.exercise-weight').value) || 0
         };
         exercises.push(exercise);
+
+        // 記録更新チェック
+        if (checkRecordImprovement(entry.id)) {
+            improvements.push(exercise.name);
+        }
     });
 
     // 体重・体脂肪率取得
@@ -1046,7 +1173,13 @@ function handleSessionFormSubmit(e) {
     renderClientsGrid();
 
     closeSessionModal();
-    showNotification('セッションを記録しました');
+
+    // 記録更新の通知
+    if (improvements.length > 0) {
+        showNotification(`🎉 記録更新！ ${improvements.join(', ')}`, 'success');
+    } else {
+        showNotification('セッションを記録しました');
+    }
 
     // Google Calendarに予約を追加
     if (sessionData.nextAppointment && googleAccessToken) {

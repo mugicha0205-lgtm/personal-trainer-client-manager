@@ -1118,6 +1118,28 @@ body {
     background: #c0392b;
 }
 
+/* 前回の記録表示 */
+.previous-record {
+    margin-top: 12px;
+    padding: 12px;
+    background: rgba(59, 130, 246, 0.1);
+    border-left: 4px solid var(--accent-blue);
+    border-radius: 8px;
+}
+
+.prev-record-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent-blue);
+    margin-bottom: 4px;
+}
+
+.prev-record-data {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--navy-primary);
+}
+
 /* ===== グラフコンテナ ===== */
 .progress-charts {
     display: grid;
